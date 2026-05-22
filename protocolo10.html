@@ -1,0 +1,778 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+<title>Protocolo 10</title>
+<meta name="theme-color" content="#0b0b0c" />
+<!-- iOS PWA -->
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Protocolo 10" />
+<link rel="manifest" href="data:application/manifest+json;base64,ewogICJuYW1lIjogIlByb3RvY29sbyAxMCIsCiAgInNob3J0X25hbWUiOiAiUHJvdG9jb2xvIDEwIiwKICAiZGVzY3JpcHRpb24iOiAiVHJhY2tpbmcgaGFjaWEgZWwgMTAlIGRlIGdyYXNhIiwKICAic3RhcnRfdXJsIjogIi4iLAogICJkaXNwbGF5IjogInN0YW5kYWxvbmUiLAogICJiYWNrZ3JvdW5kX2NvbG9yIjogIiMwYjBiMGMiLAogICJ0aGVtZV9jb2xvciI6ICIjMGIwYjBjIiwKICAiaWNvbnMiOiBbCiAgICB7ICJzcmMiOiAiaWNvbi0xOTIucG5nIiwgInNpemVzIjogIjE5MngxOTIiLCAidHlwZSI6ICJpbWFnZS9wbmciIH0sCiAgICB7ICJzcmMiOiAiaWNvbi01MTIucG5nIiwgInNpemVzIjogIjUxMng1MTIiLCAidHlwZSI6ICJpbWFnZS9wbmciIH0KICBdCn0=" />
+<link rel="apple-touch-icon" href="icon-192.png" />
+<style>
+  html,body { margin:0; padding:0; background:#0b0b0c; min-height:100vh; }
+  body { overscroll-behavior-y:none; }
+  #root { min-height:100vh; }
+  .boot { color:#8b8984; font-family:sans-serif; text-align:center; padding-top:40vh; }
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js" crossorigin></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.5/babel.min.js" crossorigin></script>
+</head>
+<body>
+<div id="root"><div class="boot">Cargando Protocolo 10…</div></div>
+<script type="text/babel" data-presets="react">
+const { useState, useMemo, useEffect } = React;
+
+
+// ============================================================
+//  PROTOCOLO 10 — App local de tracking hacia el 10% de grasa
+//  Dark premium + acento dorado. Single-file React artifact.
+//  (Versión PWA con localStorage se entrega aparte como HTML)
+// ============================================================
+
+// ---------- DATOS DEL USUARIO (actualizado 12 may 2026) ----------
+const USER = {
+  height: 176,            // cm
+  startWeight: 77.5,      // kg al empezar el corte (30 ene)
+  startBF: 17.2,          // % grasa al empezar
+  refWeight: 67.2,        // peso real de referencia (12 may)
+  refBF: 11.5,            // % grasa real estimado en refWeight
+  goalBF: 10,             // % objetivo
+  goalWeightTarget: 65.5, // peso meta proyectado para el 10%
+  goalDate: "2026-06-09", // fecha objetivo
+  kcalGoal: 1768,         // objetivo diario · día de pesas (suma real del menú; ~168P/172C/39G)
+  // Masa magra implícita: refWeight*(1-refBF/100) = 67.2*0.885 ≈ 59.47 kg
+};
+// Masa libre de grasa estimada y constante durante el corte final
+const LEAN_MASS = USER.refWeight * (1 - USER.refBF / 100);
+
+// ---------- RUTINA (6 días, 3 series por ejercicio) ----------
+const SETS = 3;
+const mk = (names, mains = []) =>
+  names.map((n) => ({ name: n, sets: SETS, main: mains.includes(n) }));
+
+const ROUTINE = [
+  { id: "d1", tag: "DÍA 01", name: "Pecho y Espalda", groups: ["Pecho", "Espalda"],
+    exercises: mk([
+      "Press inclinado con mancuernas", "Cruces en máquina / polea",
+      "Press inclinado en máquina guiada", "Cierres de pecho en máquina",
+      "Jalón al pecho barra / dominadas", "Remo con barra libre",
+      "Pull over unilateral", "Remo con manilla unilateral",
+    ], ["Press inclinado con mancuernas", "Jalón al pecho barra / dominadas"]) },
+  { id: "d2", tag: "DÍA 02", name: "Hombro, Bíceps y Tríceps", groups: ["Hombro", "Bíceps", "Tríceps"],
+    exercises: mk([
+      "Press militar en máquina", "Laterales con mancuernas",
+      "Vuelos frontales con mancuernas", "Aperturas hombro posterior en polea",
+      "Curl bíceps sentado banco inclinado", "Curl bíceps máquina predicador",
+      "Ext. tríceps cuerda unilateral", "Ext. tríceps cuerda trasnuca",
+      "Curl martillo mancuernas", "Press francés con mancuernas",
+    ], ["Press militar en máquina"]) },
+  { id: "d3", tag: "DÍA 03", name: "Pierna y Abdomen", groups: ["Pierna", "Abdomen"],
+    exercises: mk([
+      "Prensa", "Extensión cuádriceps unilateral", "Máquina femoral sentado",
+      "Gemelo de pie", "Máquina abductores", "Gemelo sentado",
+      "Crunch ABS en máquina", "Crunch ABS banco declinado con peso", "Leg raises en barra",
+    ], ["Prensa"]) },
+  { id: "d4", tag: "DÍA 04", name: "Pecho y Espalda — 2ª", groups: ["Pecho", "Espalda"],
+    exercises: mk([
+      "Press inclinado con mancuernas", "Cruces en máquina / polea",
+      "Press inclinado en máquina guiada", "Cierres de pecho en máquina",
+      "Jalón al pecho barra / dominadas", "Remo con barra libre",
+      "Pull over unilateral", "Remo con manilla unilateral",
+    ], ["Press inclinado con mancuernas", "Jalón al pecho barra / dominadas"]) },
+  { id: "d5", tag: "DÍA 05", name: "Hombro, Bíceps y Tríceps — 2ª", groups: ["Hombro", "Bíceps", "Tríceps"],
+    exercises: mk([
+      "Press militar en máquina", "Laterales con mancuernas",
+      "Vuelos frontales con mancuernas", "Aperturas hombro posterior en polea",
+      "Curl bíceps sentado banco inclinado", "Curl bíceps máquina predicador",
+      "Ext. tríceps cuerda unilateral", "Ext. tríceps cuerda trasnuca",
+      "Curl martillo mancuernas", "Press francés con mancuernas",
+    ], ["Press militar en máquina"]) },
+  { id: "d6", tag: "DÍA 06", name: "Pierna y Abdomen — 2ª", groups: ["Pierna", "Abdomen"],
+    exercises: mk([
+      "Prensa", "Extensión cuádriceps unilateral", "Máquina femoral sentado",
+      "Gemelo de pie", "Máquina abductores", "Gemelo sentado",
+      "Crunch ABS en máquina", "Crunch ABS banco declinado con peso", "Leg raises en barra",
+    ], ["Prensa"]) },
+];
+
+// ---------- DIETA (día de pesas · plan 1.707 kcal · 168P/172C/39G) ----------
+const DIET = [
+  { meal: "C1 · 14:00", kcal: 698, items: [
+    { id: "c1a", txt: "300g patata al horno sin aceite", kcal: 270 },
+    { id: "c1b", txt: "200g pechuga de pollo + chorrito AOVE", kcal: 290 },
+    { id: "c1c", txt: "3 claras pasteurizadas (100g)", kcal: 52 },
+    { id: "c1d", txt: "1 naranja (180g)", kcal: 86 },
+  ]},
+  { meal: "C2 · 18:00", kcal: 494, items: [
+    { id: "c2a", txt: "200g yogur griego 0%", kcal: 118 },
+    { id: "c2b", txt: "1 natilla proteica", kcal: 95 },
+    { id: "c2c", txt: "100g fresas", kcal: 32 },
+    { id: "c2d", txt: "1 plátano (120g)", kcal: 107 },
+    { id: "c2e", txt: "4 tortitas de arroz", kcal: 112 },
+    { id: "c2f", txt: "10g miel", kcal: 30 },
+  ]},
+  { meal: "C3 · 21:30", kcal: 576, items: [
+    { id: "c3a", txt: "150g pollo picado magro", kcal: 215 },
+    { id: "c3b", txt: "2 huevos enteros M", kcal: 150 },
+    { id: "c3c", txt: "3 claras (100g)", kcal: 52 },
+    { id: "c3d", txt: "1 natilla proteica", kcal: 95 },
+    { id: "c3e", txt: "40g aguacate", kcal: 64 },
+  ]},
+];
+
+// ---------- HELPERS ----------
+const todayISO = () => new Date().toISOString().slice(0, 10);
+const fmtDate = (iso) => new Date(iso + "T00:00:00").toLocaleDateString("es-ES", { day: "2-digit", month: "short" });
+// Estimación de % grasa a partir del peso, usando masa magra fija (LEAN_MASS).
+// En el corte final la pérdida de peso es casi toda grasa, así que la masa
+// magra se mantiene ~constante y el % grasa = (peso - magra) / peso.
+function estimateBF(weight) {
+  const fat = Math.max(0, weight - LEAN_MASS);
+  return (fat / weight) * 100;
+}
+function weightForBF(bf) {
+  // peso al que el % grasa sería 'bf', manteniendo la masa magra fija.
+  // bf = (w - lean)/w*100  →  w = lean / (1 - bf/100)
+  return LEAN_MASS / (1 - bf / 100);
+}
+
+// ---------- PERSISTENCIA EN localStorage ----------
+function usePersist(key, initial) {
+  const [val, setVal] = useState(() => {
+    try {
+      const raw = localStorage.getItem(key);
+      return raw != null ? JSON.parse(raw) : initial;
+    } catch { return initial; }
+  });
+  useEffect(() => {
+    try { localStorage.setItem(key, JSON.stringify(val)); } catch {}
+  }, [key, val]);
+  return [val, setVal];
+}
+
+// ============================================================
+//  ESTILOS
+// ============================================================
+const Styles = () => (
+  <style>{`
+    @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Sora:wght@300;400;500;600&display=swap');
+    * { box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+    .p10 {
+      --gold:#E3B43A; --gold2:#caa030; --gold-dim:#7d6320;
+      --bg:#0b0b0c; --bg2:#141416; --card:#19191c; --card2:#202024;
+      --line:#2a2a2f; --txt:#f3f1eb; --txt-dim:#8b8984;
+      --green:#5ad67d; --red:#f87171; --blue:#5b9bd5;
+      font-family:'Sora',sans-serif;
+      background:
+        radial-gradient(1100px 560px at 85% -12%, rgba(227,180,58,.09), transparent 58%),
+        radial-gradient(800px 480px at -12% 112%, rgba(227,180,58,.05), transparent 55%),
+        var(--bg);
+      color:var(--txt); min-height:100vh; max-width:520px; margin:0 auto; position:relative; overflow-x:hidden;
+    }
+    .disp { font-family:'Oswald',sans-serif; letter-spacing:.02em; }
+    .hd { padding:20px 20px 14px; display:flex; align-items:center; justify-content:space-between;
+      border-bottom:1px solid var(--line); position:sticky; top:0; z-index:20;
+      background:rgba(11,11,12,.86); backdrop-filter:blur(12px); }
+    .logo { font-family:'Oswald'; font-weight:700; font-size:21px; letter-spacing:.05em; }
+    .logo b { color:var(--gold); }
+    .streak { font-size:12px; color:var(--txt-dim); display:flex; align-items:center; gap:6px;
+      background:var(--card); padding:6px 11px; border-radius:999px; border:1px solid var(--line); }
+    .streak b { color:var(--gold); font-weight:600; }
+    .ct { padding:18px 16px 108px; animation:fade .4s ease; }
+    @keyframes fade { from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;} }
+    @keyframes pop { from{opacity:0; transform:scale(.97);} to{opacity:1; transform:scale(1);} }
+
+    .tabs { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:520px;
+      display:grid; grid-template-columns:repeat(5,1fr); background:rgba(17,17,19,.93);
+      backdrop-filter:blur(16px); border-top:1px solid var(--line); z-index:30;
+      padding:8px 4px calc(8px + env(safe-area-inset-bottom)); }
+    .tab { background:none; border:none; color:var(--txt-dim); cursor:pointer; display:flex; flex-direction:column;
+      align-items:center; gap:3px; font-family:'Sora'; font-size:10px; font-weight:500; padding:5px 0; transition:color .2s; }
+    .tab.on { color:var(--gold); }
+    .tab svg { width:21px; height:21px; }
+
+    .sect { font-size:12px; text-transform:uppercase; letter-spacing:.14em; color:var(--txt-dim); margin:4px 0 12px; font-weight:600; }
+    .h1 { font-size:29px; font-weight:700; margin:0 0 2px; line-height:1.05; }
+    .sub { color:var(--txt-dim); font-size:13px; margin:0 0 18px; }
+
+    .card { background:linear-gradient(160deg,var(--card),var(--bg2)); border:1px solid var(--line);
+      border-radius:18px; padding:16px; margin-bottom:12px; animation:pop .35s ease; }
+    .daycard { background:linear-gradient(155deg,var(--card),var(--bg2)); border:1px solid var(--line);
+      border-radius:18px; padding:17px; margin-bottom:12px; cursor:pointer; position:relative; overflow:hidden;
+      transition:transform .15s, border-color .2s; }
+    .daycard:active { transform:scale(.985); }
+    .daycard::before { content:''; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--gold); opacity:0; transition:opacity .2s; }
+    .daycard:hover { border-color:var(--gold-dim); } .daycard:hover::before { opacity:1; }
+    .pill { display:inline-block; font-family:'Oswald'; font-size:11px; letter-spacing:.12em; color:var(--gold);
+      border:1px solid var(--gold-dim); border-radius:6px; padding:2px 8px; margin-bottom:9px; }
+    .dayname { font-family:'Oswald'; font-size:21px; font-weight:600; margin:0 0 8px; line-height:1.1; }
+    .chips { display:flex; flex-wrap:wrap; gap:6px; }
+    .chip { font-size:11px; color:var(--txt-dim); background:var(--card2); border:1px solid var(--line); padding:3px 9px; border-radius:999px; }
+    .daymeta { display:flex; justify-content:space-between; align-items:flex-end; margin-top:12px; }
+    .last { font-size:11px; color:var(--txt-dim); } .last b { color:var(--green); font-weight:500; }
+
+    .btn { background:var(--gold); color:#1a1300; border:none; border-radius:12px; font-family:'Oswald'; font-weight:600;
+      letter-spacing:.04em; font-size:15px; padding:13px; width:100%; cursor:pointer; transition:filter .15s, transform .1s; }
+    .btn:active { transform:scale(.98); } .btn:hover { filter:brightness(1.08); }
+    .back { background:none; border:none; color:var(--gold); font-family:'Sora'; font-size:14px; cursor:pointer;
+      display:flex; align-items:center; gap:5px; margin-bottom:14px; padding:0; }
+    .back svg { width:16px; height:16px; }
+
+    .ex { background:var(--card); border:1px solid var(--line); border-radius:14px; padding:13px 14px; margin-bottom:10px; }
+    .exh { display:flex; justify-content:space-between; align-items:center; margin-bottom:11px; gap:8px; }
+    .exn { font-size:14px; font-weight:500; line-height:1.25; }
+    .exm { font-size:9.5px; color:var(--gold); border:1px solid var(--gold-dim); border-radius:5px; padding:1px 6px; letter-spacing:.06em; white-space:nowrap; }
+    .prev { font-size:11px; color:var(--txt-dim); margin-bottom:9px; } .prev b { color:var(--txt); font-weight:500; }
+    .setrow { display:grid; grid-template-columns:24px 1fr 1fr; gap:8px; align-items:center; margin-bottom:7px; }
+    .setn { font-family:'Oswald'; font-size:13px; color:var(--txt-dim); text-align:center; }
+    .inp { background:var(--bg2); border:1px solid var(--line); border-radius:9px; color:var(--txt); font-family:'Sora';
+      font-size:15px; padding:9px 10px; width:100%; text-align:center; transition:border-color .15s; -moz-appearance:textfield; }
+    .inp::-webkit-outer-spin-button,.inp::-webkit-inner-spin-button { -webkit-appearance:none; margin:0; }
+    .inp:focus { outline:none; border-color:var(--gold); } .inp::placeholder { color:#555; }
+    .collbl { display:grid; grid-template-columns:24px 1fr 1fr; gap:8px; margin-bottom:6px; }
+    .collbl span { font-size:10px; text-transform:uppercase; letter-spacing:.1em; color:var(--txt-dim); text-align:center; }
+
+    .stat { display:flex; gap:10px; } .statb { flex:1; background:var(--card); border:1px solid var(--line);
+      border-radius:14px; padding:13px; text-align:center; }
+    .statn { font-family:'Oswald'; font-size:25px; font-weight:700; color:var(--gold); line-height:1; }
+    .statl { font-size:10px; text-transform:uppercase; letter-spacing:.07em; color:var(--txt-dim); margin-top:5px; }
+
+    .field { margin-bottom:14px; } .field label { display:block; font-size:11px; text-transform:uppercase;
+      letter-spacing:.1em; color:var(--txt-dim); margin-bottom:6px; }
+    .field .inp { text-align:left; }
+    .r2 { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+    .r3 { display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; }
+
+    .logl { display:flex; justify-content:space-between; align-items:center; padding:11px 0; border-bottom:1px solid var(--line); }
+    .logl:last-child { border-bottom:none; }
+    .logd { font-size:12px; color:var(--txt-dim); }
+    .logv { font-family:'Oswald'; font-size:16px; font-weight:600; } .logv small { font-size:11px; color:var(--txt-dim); font-family:'Sora'; font-weight:400; }
+    .delta { font-size:11px; margin-left:8px; } .delta.dn { color:var(--green); } .delta.up { color:var(--red); }
+
+    .empty { text-align:center; color:var(--txt-dim); font-size:13px; padding:30px 10px; }
+    .empty svg { width:38px; height:38px; opacity:.3; margin-bottom:10px; }
+
+    .toast { position:fixed; bottom:88px; left:50%; transform:translateX(-50%); background:var(--gold); color:#1a1300;
+      font-family:'Oswald'; font-weight:600; font-size:14px; padding:11px 20px; border-radius:999px; z-index:50;
+      animation:pop .25s ease; box-shadow:0 8px 30px rgba(227,180,58,.35); }
+
+    .spark { display:flex; align-items:flex-end; gap:3px; height:46px; margin-top:12px; }
+    .spark > div { flex:1; background:linear-gradient(var(--gold),var(--gold-dim)); border-radius:3px 3px 0 0; min-height:4px; transition:height .3s; }
+
+    /* dieta checklist */
+    .meal { margin-bottom:8px; }
+    .mealh { display:flex; justify-content:space-between; align-items:center; padding:6px 2px 10px; }
+    .mealt { font-family:'Oswald'; font-size:15px; letter-spacing:.04em; color:var(--gold); }
+    .mealk { font-size:11px; color:var(--txt-dim); }
+    .chk { display:flex; align-items:center; gap:11px; padding:10px 12px; background:var(--card); border:1px solid var(--line);
+      border-radius:11px; margin-bottom:7px; cursor:pointer; transition:border-color .15s, background .15s; }
+    .chk:active { transform:scale(.99); }
+    .chk.done { border-color:var(--gold-dim); background:linear-gradient(90deg, rgba(227,180,58,.07), var(--card)); }
+    .box { width:21px; height:21px; border-radius:6px; border:2px solid var(--line); flex-shrink:0; display:flex;
+      align-items:center; justify-content:center; transition:all .15s; }
+    .chk.done .box { background:var(--gold); border-color:var(--gold); }
+    .box svg { width:13px; height:13px; stroke:#1a1300; stroke-width:3.5; opacity:0; transition:opacity .12s; }
+    .chk.done .box svg { opacity:1; }
+    .chktxt { flex:1; font-size:13px; line-height:1.25; transition:color .15s; }
+    .chk.done .chktxt { color:var(--txt-dim); text-decoration:line-through; }
+    .chkk { font-size:11px; color:var(--txt-dim); font-family:'Oswald'; }
+    .extra { display:flex; gap:8px; margin-top:4px; }
+    .extra .inp { flex:1; } .extra .mini { width:auto; padding:9px 14px; font-size:13px; }
+
+    /* progreso 10% */
+    .ring-wrap { display:flex; flex-direction:column; align-items:center; margin:6px 0 4px; }
+    .bigpct { font-family:'Oswald'; font-size:52px; font-weight:700; color:var(--gold); line-height:1; }
+    .bigpct small { font-size:22px; }
+    .goalbar { height:11px; background:var(--bg2); border-radius:999px; overflow:hidden; border:1px solid var(--line); margin:14px 0 6px; position:relative; }
+    .goalbar > div { height:100%; background:linear-gradient(90deg,var(--gold-dim),var(--gold)); transition:width .5s; }
+    .goalticks { display:flex; justify-content:space-between; font-size:10px; color:var(--txt-dim); }
+
+    /* calendario */
+    .calhd { display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; }
+    .calnav { background:var(--card); border:1px solid var(--line); color:var(--txt); width:34px; height:34px;
+      border-radius:9px; cursor:pointer; font-size:16px; display:flex; align-items:center; justify-content:center; }
+    .calmonth { font-family:'Oswald'; font-size:17px; letter-spacing:.04em; }
+    .calgrid { display:grid; grid-template-columns:repeat(7,1fr); gap:5px; }
+    .caldow { font-size:10px; color:var(--txt-dim); text-align:center; padding-bottom:4px; text-transform:uppercase; letter-spacing:.05em; }
+    .calcell { aspect-ratio:1; border-radius:9px; display:flex; align-items:center; justify-content:center; font-size:13px;
+      position:relative; background:var(--card); border:1px solid var(--line); color:var(--txt-dim); }
+    .calcell.empty { background:transparent; border:none; }
+    .calcell.today { border-color:var(--gold); color:var(--txt); }
+    .calcell.train { background:linear-gradient(155deg, rgba(227,180,58,.22), rgba(227,180,58,.06)); border-color:var(--gold-dim); color:var(--txt); font-weight:600; }
+    .caldot { position:absolute; bottom:4px; display:flex; gap:2px; }
+    .caldot i { width:4px; height:4px; border-radius:50%; }
+    .legend { display:flex; gap:14px; flex-wrap:wrap; margin-top:14px; font-size:11px; color:var(--txt-dim); }
+    .legend span { display:flex; align-items:center; gap:5px; }
+    .legend i { width:9px; height:9px; border-radius:3px; display:inline-block; }
+  `}</style>
+);
+
+const Icon = ({ name }) => {
+  const p = { fill: "none", stroke: "currentColor", strokeWidth: 1.8, strokeLinecap: "round", strokeLinejoin: "round" };
+  const paths = {
+    dumbbell: <path {...p} d="M6.5 6.5 17.5 17.5M2.5 8.5 4 7l3 3-1.5 1.5zM17.5 12.5 19 11l2.5 2.5L20 15zM5 11 8 8M16 16l3-3"/>,
+    target: <><circle {...p} cx="12" cy="12" r="8"/><circle {...p} cx="12" cy="12" r="4"/><circle {...p} cx="12" cy="12" r="0.6"/></>,
+    plate: <><path {...p} d="M4 3v7a2 2 0 0 0 2 2v9M6 3v7M8 3v7M16 3c-1.5 0-2 4-2 6s1 2 2 2v9"/></>,
+    cal: <><rect {...p} x="3" y="4.5" width="18" height="16" rx="2"/><path {...p} d="M3 9h18M8 2.5v4M16 2.5v4"/></>,
+    scale: <path {...p} d="M12 3v3M5 9h14l-2.5 7.5a5 5 0 0 1-9 0L5 9zM8 9l4-3 4 3"/>,
+    fire: <path {...p} d="M12 3s4 3.5 4 8a4 4 0 0 1-8 0c0-1.5.5-2.5 1-3 0 1 .5 1.5 1 1.5C9 7 12 3 12 3z"/>,
+    chevron: <path {...p} d="M15 18l-6-6 6-6"/>,
+    check: <path {...p} d="M5 12l5 5L19 7"/>,
+  };
+  return <svg viewBox="0 0 24 24">{paths[name]}</svg>;
+};
+
+// ============================================================
+//  APP
+// ============================================================
+function Protocolo10() {
+  const [tab, setTab] = useState("entrenos");
+  const [openDay, setOpenDay] = useState(null);
+  const [toast, setToast] = useState("");
+
+  const [workoutLogs, setWorkoutLogs] = usePersist("p10_workouts", {});       // {exName:[{date,sets}]}
+  const [weightLogs, setWeightLogs] = usePersist("p10_weights", [{ date: "2026-05-12", weight: 67.2 }]);
+  const [dietState, setDietState] = usePersist("p10_diet", {});               // {date:{checked, extra}}
+  const [trainDays, setTrainDays] = usePersist("p10_trainDays", {});          // {date:dayId}
+
+  const t = (m) => { setToast(m); setTimeout(() => setToast(""), 1500); };
+
+  const activeDays = useMemo(() => {
+    const s = new Set();
+    Object.values(workoutLogs).forEach(a => a.forEach(l => s.add(l.date)));
+    weightLogs.forEach(l => s.add(l.date));
+    Object.keys(dietState).forEach(d => { if ((dietState[d].extra?.length || Object.keys(dietState[d].checked||{}).length)) s.add(d); });
+    Object.keys(trainDays).forEach(d => s.add(d));
+    return s;
+  }, [workoutLogs, weightLogs, dietState, trainDays]);
+
+  return (
+    <div className="p10">
+      <Styles />
+      <header className="hd">
+        <div className="logo">PROTOCOLO <b>10</b></div>
+        <div className="streak"><Icon name="fire" /> <b>{activeDays.size}</b> días activos</div>
+      </header>
+
+      <div className="ct" key={tab + (openDay || "")}>
+        {tab === "entrenos" && !openDay && <EntrenosList onOpen={setOpenDay} logs={workoutLogs} />}
+        {tab === "entrenos" && openDay && (
+          <DayDetail day={ROUTINE.find(d => d.id === openDay)} logs={workoutLogs} onBack={() => setOpenDay(null)}
+            onSave={(exName, entry, dayId) => {
+              setWorkoutLogs(p => ({ ...p, [exName]: [entry, ...(p[exName] || [])] }));
+              setTrainDays(p => ({ ...p, [entry.date]: dayId }));
+              t("Serie guardada 💪");
+            }} />
+        )}
+        {tab === "progreso" && <Progreso weightLogs={weightLogs} onAdd={(e) => { setWeightLogs(p => [e, ...p]); t("Peso registrado ✓"); }} />}
+        {tab === "dieta" && <Dieta state={dietState} setState={setDietState} onToast={t} />}
+        {tab === "calendario" && <Calendario activeDays={activeDays} trainDays={trainDays} weightLogs={weightLogs} dietState={dietState} />}
+      </div>
+
+      {toast && <div className="toast">{toast}</div>}
+
+      <nav className="tabs">
+        {[
+          { k: "entrenos", l: "Entrenos", i: "dumbbell" },
+          { k: "progreso", l: "Progreso", i: "target" },
+          { k: "dieta", l: "Dieta", i: "plate" },
+          { k: "calendario", l: "Calendario", i: "cal" },
+        ].map(x => (
+          <button key={x.k} className={`tab ${tab === x.k ? "on" : ""}`} onClick={() => { setTab(x.k); setOpenDay(null); }}>
+            <Icon name={x.i} /> {x.l}
+          </button>
+        ))}
+      </nav>
+    </div>
+  );
+}
+
+// ---------- ENTRENOS ----------
+function EntrenosList({ onOpen, logs }) {
+  const lastFor = (day) => {
+    let latest = null;
+    day.exercises.forEach(ex => (logs[ex.name] || []).forEach(l => { if (!latest || l.date > latest) latest = l.date; }));
+    return latest;
+  };
+  return (
+    <>
+      <p className="sect">Rutina · 6 días · 3 series</p>
+      <h1 className="h1">Elige tu día</h1>
+      <p className="sub">Doble frecuencia · Hipertrofia & Fuerza</p>
+      {ROUTINE.map(day => {
+        const last = lastFor(day);
+        return (
+          <div key={day.id} className="daycard" onClick={() => onOpen(day.id)}>
+            <span className="pill">{day.tag}</span>
+            <h2 className="dayname">{day.name}</h2>
+            <div className="chips">{day.groups.map(g => <span key={g} className="chip">{g}</span>)}</div>
+            <div className="daymeta">
+              <span className="last">{last ? <>Último: <b>{fmtDate(last)}</b></> : "Sin registros aún"}</span>
+              <span style={{ width: 18, color: "var(--txt-dim)" }}><Icon name="chevron" /></span>
+            </div>
+          </div>
+        );
+      })}
+    </>
+  );
+}
+
+function DayDetail({ day, logs, onBack, onSave }) {
+  return (
+    <>
+      <button className="back" onClick={onBack}><Icon name="chevron" /> Volver</button>
+      <span className="pill">{day.tag}</span>
+      <h1 className="h1" style={{ fontSize: 23, marginBottom: 18 }}>{day.name}</h1>
+      {day.exercises.map((ex, i) => (
+        <ExerciseCard key={i} ex={ex} history={logs[ex.name] || []} onSave={(entry) => onSave(ex.name, entry, day.id)} />
+      ))}
+    </>
+  );
+}
+
+function ExerciseCard({ ex, history, onSave }) {
+  const [sets, setSets] = useState(() => Array.from({ length: ex.sets }, () => ({ w: "", r: "" })));
+  const prev = history[0];
+  const upd = (i, f, v) => setSets(s => s.map((r, idx) => idx === i ? { ...r, [f]: v } : r));
+  const save = () => {
+    const filled = sets.filter(s => s.w !== "" || s.r !== "");
+    if (!filled.length) return;
+    onSave({ date: todayISO(), sets: filled.map(s => ({ w: Number(s.w) || 0, r: Number(s.r) || 0 })) });
+    setSets(Array.from({ length: ex.sets }, () => ({ w: "", r: "" })));
+  };
+  return (
+    <div className="ex">
+      <div className="exh"><span className="exn">{ex.name}</span>{ex.main && <span className="exm">MAIN LIFT</span>}</div>
+      {prev && <div className="prev">Anterior ({fmtDate(prev.date)}): <b>{prev.sets.map(s => `${s.w}kg×${s.r}`).join("  ·  ")}</b></div>}
+      <div className="collbl"><span></span><span>Peso (kg)</span><span>Reps</span></div>
+      {sets.map((s, i) => (
+        <div className="setrow" key={i}>
+          <span className="setn">{i + 1}</span>
+          <input className="inp" type="number" inputMode="decimal" placeholder="–" value={s.w} onChange={e => upd(i, "w", e.target.value)} />
+          <input className="inp" type="number" inputMode="numeric" placeholder="–" value={s.r} onChange={e => upd(i, "r", e.target.value)} />
+        </div>
+      ))}
+      <button className="btn" style={{ marginTop: 8, padding: 10, fontSize: 13 }} onClick={save}>Guardar registro</button>
+    </div>
+  );
+}
+
+// ---------- PROGRESO HACIA EL 10% ----------
+function Progreso({ weightLogs, onAdd }) {
+  const [w, setW] = useState("");
+  const add = () => { if (!w) return; onAdd({ date: todayISO(), weight: Number(w) }); setW(""); };
+
+  const sorted = [...weightLogs].sort((a, b) => b.date.localeCompare(a.date));
+  const current = sorted[0]?.weight ?? null;
+  const bfNow = current != null ? estimateBF(current) : null;
+  const goalWeight = weightForBF(USER.goalBF);
+  const kgToGoal = current != null ? Math.max(0, current - goalWeight) : null;
+
+  // progreso en la barra: del % de referencia (recta final) al objetivo
+  const prog = bfNow != null
+    ? Math.min(100, Math.max(0, ((USER.refBF - bfNow) / (USER.refBF - USER.goalBF)) * 100))
+    : 0;
+
+  const sparkAsc = [...weightLogs].sort((a, b) => a.date.localeCompare(b.date)).slice(-14).map(l => l.weight);
+  const min = Math.min(...sparkAsc), max = Math.max(...sparkAsc);
+
+  // proyección: ritmo de las últimas 2 semanas
+  let weeksLeft = null;
+  if (sparkAsc.length >= 2 && current != null) {
+    const oldest = sparkAsc[0], newest = sparkAsc[sparkAsc.length - 1];
+    const totalLost = oldest - newest;
+    const ratePerEntry = totalLost / (sparkAsc.length - 1);
+    const weeklyRate = ratePerEntry > 0.05 ? ratePerEntry : 0.45; // fallback ~0.45kg/sem (recta final)
+    if (kgToGoal > 0) weeksLeft = Math.ceil(kgToGoal / weeklyRate);
+  }
+
+  return (
+    <>
+      <p className="sect">Objetivo · 10% de grasa</p>
+      <h1 className="h1">Tu progreso</h1>
+      <p className="sub">{USER.height}cm · meta {USER.goalBF}% para el 9 jun</p>
+
+      {current == null ? (
+        <div className="card" style={{ textAlign: "center" }}>
+          <Icon name="target" />
+          <p style={{ color: "var(--txt-dim)", fontSize: 13, marginTop: 8 }}>
+            Pésate por las mañanas en ayunas. La app estima tu % de grasa y cuánto te falta para el 10%.
+          </p>
+        </div>
+      ) : (
+        <div className="card">
+          <div className="ring-wrap">
+            <div className="bigpct">{bfNow.toFixed(1)}<small>%</small></div>
+            <div className="statl" style={{ marginTop: 4 }}>grasa estimada</div>
+          </div>
+          <div className="goalbar"><div style={{ width: `${prog}%` }} /></div>
+          <div className="goalticks"><span>{USER.refBF}%</span><span style={{ color: "var(--gold)" }}>meta {USER.goalBF}%</span></div>
+
+          <div className="stat" style={{ marginTop: 16 }}>
+            <div className="statb"><div className="statn">{current}<small style={{ fontSize: 13 }}>kg</small></div><div className="statl">Peso actual</div></div>
+            <div className="statb"><div className="statn">{kgToGoal > 0 ? kgToGoal.toFixed(1) : "0"}<small style={{ fontSize: 13 }}>kg</small></div><div className="statl">Para el 10%</div></div>
+            <div className="statb"><div className="statn">{goalWeight.toFixed(1)}<small style={{ fontSize: 13 }}>kg</small></div><div className="statl">Peso meta</div></div>
+          </div>
+
+          {kgToGoal <= 0 ? (
+            <p style={{ textAlign: "center", color: "var(--green)", fontSize: 13, marginTop: 14, fontWeight: 600 }}>
+              🏆 ¡Has alcanzado el 10%! A mantener o lean bulk.
+            </p>
+          ) : (
+            <div style={{ textAlign: "center", marginTop: 14 }}>
+              {weeksLeft != null && (
+                <p style={{ color: "var(--txt-dim)", fontSize: 12.5, margin: 0 }}>
+                  A tu ritmo llegarías en <b style={{ color: "var(--gold)" }}>~{weeksLeft} {weeksLeft === 1 ? "semana" : "semanas"}</b>
+                </p>
+              )}
+              {(() => {
+                const days = Math.round((new Date(USER.goalDate) - new Date(todayISO())) / 86400000);
+                if (days > 0) return <p style={{ color: "var(--txt-dim)", fontSize: 11.5, margin: "4px 0 0" }}>Meta 9 jun · faltan <b style={{ color: "var(--txt)" }}>{days} días</b></p>;
+                if (days === 0) return <p style={{ color: "var(--gold)", fontSize: 11.5, margin: "4px 0 0" }}>¡Hoy es el día objetivo!</p>;
+                return <p style={{ color: "var(--txt-dim)", fontSize: 11.5, margin: "4px 0 0" }}>Fecha objetivo superada · sigue puliendo</p>;
+              })()}
+            </div>
+          )}
+
+          {sparkAsc.length > 1 && (
+            <div className="spark">
+              {sparkAsc.map((v, i) => <div key={i} style={{ height: `${max === min ? 50 : 12 + ((v - min) / (max - min)) * 88}%` }} title={`${v}kg`} />)}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="card">
+        <div className="field" style={{ marginBottom: 0 }}>
+          <label>Peso de hoy (kg) · en ayunas</label>
+          <input className="inp" type="number" inputMode="decimal" placeholder="ej. 70.4" value={w} onChange={e => setW(e.target.value)} />
+        </div>
+        <button className="btn" style={{ marginTop: 14 }} onClick={add}>Registrar peso</button>
+      </div>
+
+      {sorted.length > 0 && (
+        <div className="card">
+          {sorted.map((l, i) => {
+            const next = sorted[i + 1];
+            const d = next ? l.weight - next.weight : null;
+            return (
+              <div className="logl" key={i}>
+                <span className="logd">{fmtDate(l.date)} · {estimateBF(l.weight).toFixed(1)}% est.</span>
+                <span className="logv">{l.weight}<small> kg</small>
+                  {d != null && d !== 0 && <span className={`delta ${d < 0 ? "dn" : "up"}`}>{d < 0 ? "▼" : "▲"} {Math.abs(d).toFixed(1)}</span>}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+      <p style={{ fontSize: 11, color: "var(--txt-dim)", textAlign: "center", lineHeight: 1.5 }}>
+        El % es una estimación basada en tu peso (asume que lo perdido es grasa). Para precisión real, mide pliegues con el plicómetro.
+      </p>
+    </>
+  );
+}
+
+// ---------- DIETA (checklist diario) ----------
+function Dieta({ state, setState, onToast }) {
+  const today = todayISO();
+  const day = state[today] || { checked: {}, extra: [] };
+  const [exTxt, setExTxt] = useState("");
+  const [exKcal, setExKcal] = useState("");
+
+  const planKcal = DIET.reduce((s, m) => s + m.kcal, 0);
+  const eatenPlan = DIET.flatMap(m => m.items).filter(it => day.checked[it.id]).reduce((s, it) => s + it.kcal, 0);
+  const extraKcal = (day.extra || []).reduce((s, e) => s + e.kcal, 0);
+  const totalEaten = eatenPlan + extraKcal;
+  const overGoal = totalEaten - USER.kcalGoal;
+
+  const toggle = (id) => {
+    setState(p => {
+      const d = p[today] || { checked: {}, extra: [] };
+      const checked = { ...d.checked, [id]: !d.checked[id] };
+      if (!checked[id]) delete checked[id];
+      return { ...p, [today]: { ...d, checked } };
+    });
+  };
+  const addExtra = () => {
+    if (!exTxt || !exKcal) return;
+    setState(p => {
+      const d = p[today] || { checked: {}, extra: [] };
+      return { ...p, [today]: { ...d, extra: [...(d.extra || []), { txt: exTxt, kcal: Number(exKcal) }] } };
+    });
+    setExTxt(""); setExKcal(""); onToast("Añadido ✓");
+  };
+  const removeExtra = (idx) => {
+    setState(p => {
+      const d = p[today]; const extra = d.extra.filter((_, i) => i !== idx);
+      return { ...p, [today]: { ...d, extra } };
+    });
+  };
+
+  const pct = Math.min(100, (totalEaten / USER.kcalGoal) * 100);
+
+  return (
+    <>
+      <p className="sect">Dieta del día · plan 10%</p>
+      <h1 className="h1">Hoy comes</h1>
+      <p className="sub">Marca lo que ya has comido · objetivo {USER.kcalGoal} kcal</p>
+
+      <div className="card">
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 10 }}>
+          <span className="disp" style={{ fontSize: 30, fontWeight: 700 }}>
+            {totalEaten}<span style={{ fontSize: 15, color: "var(--txt-dim)" }}> / {USER.kcalGoal} kcal</span>
+          </span>
+          <span style={{ fontSize: 13, color: overGoal > 0 ? "var(--red)" : "var(--green)" }}>
+            {overGoal <= 0 ? `${-overGoal} restantes` : `+${overGoal} pasado`}
+          </span>
+        </div>
+        <div className="goalbar" style={{ margin: "0 0 4px" }}>
+          <div style={{ width: `${pct}%`, background: overGoal > 0 ? "var(--red)" : undefined }} />
+        </div>
+        <div style={{ fontSize: 11, color: "var(--txt-dim)" }}>Plan base: {planKcal} kcal · marcado: {eatenPlan} kcal{extraKcal > 0 && ` · extra: +${extraKcal}`}</div>
+      </div>
+
+      {DIET.map((m) => {
+        const eaten = m.items.filter(it => day.checked[it.id]).reduce((s, it) => s + it.kcal, 0);
+        return (
+          <div className="meal card" key={m.meal}>
+            <div className="mealh"><span className="mealt">{m.meal}</span><span className="mealk">{eaten}/{m.kcal} kcal</span></div>
+            {m.items.map(it => (
+              <div className={`chk ${day.checked[it.id] ? "done" : ""}`} key={it.id} onClick={() => toggle(it.id)}>
+                <span className="box"><Icon name="check" /></span>
+                <span className="chktxt">{it.txt}</span>
+                <span className="chkk">{it.kcal}</span>
+              </div>
+            ))}
+          </div>
+        );
+      })}
+
+      <div className="card">
+        <div className="mealh" style={{ padding: "0 2px 10px" }}><span className="mealt">¿Te has excedido?</span></div>
+        <p style={{ fontSize: 12, color: "var(--txt-dim)", margin: "0 0 10px" }}>Añade lo que comiste de más para que el total cuadre.</p>
+        {(day.extra || []).map((e, i) => (
+          <div className="chk done" key={i} onClick={() => removeExtra(i)} style={{ cursor: "pointer" }}>
+            <span className="chktxt" style={{ textDecoration: "none", color: "var(--txt)" }}>{e.txt}</span>
+            <span className="chkk" style={{ color: "var(--red)" }}>+{e.kcal} ✕</span>
+          </div>
+        ))}
+        <div className="extra">
+          <input className="inp" placeholder="ej. Onza chocolate" value={exTxt} onChange={e => setExTxt(e.target.value)} />
+          <input className="inp mini" type="number" inputMode="numeric" placeholder="kcal" value={exKcal} onChange={e => setExKcal(e.target.value)} style={{ maxWidth: 78 }} />
+        </div>
+        <button className="btn" style={{ marginTop: 10, padding: 10, fontSize: 13 }} onClick={addExtra}>Añadir extra</button>
+      </div>
+    </>
+  );
+}
+
+// ---------- CALENDARIO ----------
+function Calendario({ activeDays, trainDays, weightLogs, dietState }) {
+  const [ref, setRef] = useState(() => { const d = new Date(); return { y: d.getFullYear(), m: d.getMonth() }; });
+  const MONTHS = ["Enero","Febrero","Marzo","Abril","Mayo","Junio","Julio","Agosto","Septiembre","Octubre","Noviembre","Diciembre"];
+  const DOW = ["L","M","X","J","V","S","D"];
+  const todayStr = todayISO();
+
+  const first = new Date(ref.y, ref.m, 1);
+  const startDow = (first.getDay() + 6) % 7; // lunes=0
+  const daysInMonth = new Date(ref.y, ref.m + 1, 0).getDate();
+  const cells = [];
+  for (let i = 0; i < startDow; i++) cells.push(null);
+  for (let d = 1; d <= daysInMonth; d++) cells.push(d);
+
+  const iso = (d) => `${ref.y}-${String(ref.m + 1).padStart(2, "0")}-${String(d).padStart(2, "0")}`;
+
+  // racha actual (días consecutivos activos terminando hoy)
+  const currentStreak = useMemo(() => {
+    let n = 0; let d = new Date();
+    while (activeDays.has(d.toISOString().slice(0, 10))) { n++; d.setDate(d.getDate() - 1); }
+    return n;
+  }, [activeDays]);
+
+  const trainCount = Object.keys(trainDays).filter(k => k.startsWith(`${ref.y}-${String(ref.m + 1).padStart(2, "0")}`)).length;
+
+  return (
+    <>
+      <p className="sect">Constancia</p>
+      <h1 className="h1">Calendario</h1>
+      <p className="sub">Tu racha y días de entreno</p>
+
+      <div className="stat" style={{ marginBottom: 14 }}>
+        <div className="statb"><div className="statn">{currentStreak}</div><div className="statl">racha actual</div></div>
+        <div className="statb"><div className="statn">{activeDays.size}</div><div className="statl">días activos</div></div>
+        <div className="statb"><div className="statn">{trainCount}</div><div className="statl">entrenos {MONTHS[ref.m].slice(0,3).toLowerCase()}.</div></div>
+      </div>
+
+      <div className="card">
+        <div className="calhd">
+          <button className="calnav" onClick={() => setRef(r => { const m = r.m - 1; return m < 0 ? { y: r.y - 1, m: 11 } : { ...r, m }; })}>‹</button>
+          <span className="calmonth">{MONTHS[ref.m]} {ref.y}</span>
+          <button className="calnav" onClick={() => setRef(r => { const m = r.m + 1; return m > 11 ? { y: r.y + 1, m: 0 } : { ...r, m }; })}>›</button>
+        </div>
+        <div className="calgrid">
+          {DOW.map(d => <div className="caldow" key={d}>{d}</div>)}
+          {cells.map((d, i) => {
+            if (d == null) return <div className="calcell empty" key={i} />;
+            const k = iso(d);
+            const isTrain = !!trainDays[k];
+            const isActive = activeDays.has(k);
+            const isToday = k === todayStr;
+            const hasWeight = weightLogs.some(l => l.date === k);
+            const hasDiet = dietState[k] && (Object.keys(dietState[k].checked || {}).length || (dietState[k].extra || []).length);
+            return (
+              <div className={`calcell ${isTrain ? "train" : ""} ${isToday ? "today" : ""}`} key={i}>
+                {d}
+                <div className="caldot">
+                  {hasWeight && <i style={{ background: "var(--blue)" }} />}
+                  {hasDiet && <i style={{ background: "var(--green)" }} />}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+        <div className="legend">
+          <span><i style={{ background: "var(--gold)" }} /> Entreno</span>
+          <span><i style={{ background: "var(--blue)" }} /> Pesaje</span>
+          <span><i style={{ background: "var(--green)" }} /> Dieta</span>
+        </div>
+      </div>
+
+      {activeDays.size === 0 && (
+        <div className="empty"><Icon name="cal" /><div>Registra entrenos, peso o dieta y verás aquí tu constancia</div></div>
+      )}
+    </>
+  );
+}
+
+
+const root = ReactDOM.createRoot(document.getElementById('root'));
+root.render(React.createElement(Protocolo10));
+
+</script>
+<script>
+// Service worker inline para funcionamiento offline (cachea esta misma página)
+if ('serviceWorker' in navigator) {
+  const swCode = `
+    const CACHE='p10-v1';
+    self.addEventListener('install', e=>{ self.skipWaiting(); });
+    self.addEventListener('activate', e=>{ e.waitUntil(self.clients.claim()); });
+    self.addEventListener('fetch', e=>{
+      e.respondWith(
+        caches.open(CACHE).then(c=>
+          fetch(e.request).then(r=>{ c.put(e.request, r.clone()); return r; })
+            .catch(()=> c.match(e.request))
+        )
+      );
+    });
+  `;
+  const blob = new Blob([swCode], {type:'text/javascript'});
+  navigator.serviceWorker.register(URL.createObjectURL(blob)).catch(()=>{});
+}
+</script>
+</body>
+</html>
